@@ -1,115 +1,189 @@
-IRIS — Information Retrieval & Indexing System
+# IRIS — Information Retrieval & Indexing System
 
+> 🚧 **Status:** In Progress (Phase 1 Complete)
 
-🚧 Project Status: In Progress — actively being built. This README reflects the current
-state and is updated as development progresses. See Roadmap for what's done vs
-planned.
+IRIS is a production-oriented backend search engine built from scratch over the **20 Newsgroups** dataset (~18,000 documents). It demonstrates core backend engineering, Information Retrieval (IR), and database concepts by implementing an **in-memory inverted index**, **BM25 relevance ranking**, and a scalable REST API using **FastAPI** and **PostgreSQL**.
 
+---
 
+## Features
 
-A backend information retrieval system that indexes a document corpus and exposes REST APIs
-for keyword search and relevance-ranked retrieval, built over the 20 Newsgroups dataset
-(~18,000 documents).
+### Implemented
+- ✅ FastAPI project setup
+- ✅ PostgreSQL integration
+- ✅ SQLAlchemy ORM
+- ✅ Alembic database migrations
+- ✅ Environment-based configuration
+- ✅ Database session management
+- ✅ Document ORM model
 
-Features
+### Planned
+- Document ingestion & CRUD APIs
+- Custom in-memory inverted index (HashMap → Posting Lists)
+- Text preprocessing (tokenization, stopword removal, stemming)
+- BM25 relevance ranking
+- Keyword search with Top-K retrieval
+- JWT authentication
+- Search history
+- Logging & exception handling
+- Dockerized deployment
+- Redis caching (stretch goal)
 
+---
 
-Document ingestion and CRUD APIs
-Custom in-memory inverted index (HashMap → posting lists), persisted to PostgreSQL
-Text preprocessing: tokenization, stopword removal, stemming
-BM25-based relevance ranking with top-k retrieval
-JWT authentication, protected endpoints, and per-user search history
-Dockerized deployment with Postgres and (optionally) Redis caching
+## Tech Stack
 
+| Category | Technologies |
+|----------|--------------|
+| Backend | FastAPI |
+| Database | PostgreSQL |
+| ORM | SQLAlchemy |
+| Migrations | Alembic |
+| Authentication | JWT |
+| NLP | NLTK |
+| Testing | pytest |
+| Containerization | Docker, Docker Compose |
+| Caching *(Stretch)* | Redis |
 
-Tech Stack
+---
 
+## Project Structure
 
-API: FastAPI
-Database: PostgreSQL, SQLAlchemy ORM, Alembic migrations
-Auth: JWT
-Caching (optional): Redis
-NLP: NLTK
-Testing: pytest
-Containerization: Docker, Docker Compose
-
-
-Project Structure
-
+```text
 iris/
 ├── app/
-│   ├── main.py                 # FastAPI app entrypoint
-│   ├── api/v1/                 # versioned route handlers
-│   ├── core/                   # config, constants
-│   ├── db/                     # DB engine/session setup
-│   ├── documents/              # document model, schema, repository, service
-│   ├── indexing/               # tokenizer, inverted index, posting lists
-│   ├── search/                 # BM25 ranking, search engine
-│   ├── auth/                   # JWT auth
+│   ├── main.py                 # FastAPI application entrypoint
+│   ├── api/
+│   │   └── v1/                 # Versioned REST endpoints
+│   ├── core/                   # Configuration & constants
+│   ├── db/                     # Database engine & session
+│   ├── documents/              # Document model, schemas, repository, service
+│   ├── indexing/               # Tokenizer, posting lists, inverted index
+│   ├── search/                 # BM25 ranking & search engine
+│   ├── auth/                   # JWT authentication
 │   └── utils/
 ├── tests/
-├── alembic/                    # DB migrations
+├── alembic/
 ├── docker-compose.yml
 └── requirements.txt
+```
 
-Roadmap
+---
 
+## Roadmap
 
- Phase 1 — Project setup, FastAPI, PostgreSQL, SQLAlchemy, Alembic, initial models
- Phase 2 — Document ingestion, CRUD APIs, Pydantic validation
- Phase 3 — Tokenization, inverted index, posting lists, DB persistence
- Phase 4 — Keyword search, BM25 ranking, top-k retrieval
- Phase 5 — JWT auth, search history, logging, error handling
- Phase 6 — Tests, Docker, Docker Compose, deployment
- Stretch — Redis caching, boolean/phrase search, snippet generation, autocomplete
+| Phase | Status | Description |
+|------|------|-------------|
+| Phase 1 | ✅ Complete | Project setup, FastAPI, PostgreSQL, SQLAlchemy, Alembic, initial models |
+| Phase 2 | 🚧 In Progress | Document ingestion, CRUD APIs, Pydantic validation |
+| Phase 3 | ⏳ Planned | Tokenization, inverted index, posting lists, DB persistence |
+| Phase 4 | ⏳ Planned | Keyword search, BM25 ranking, Top-K retrieval |
+| Phase 5 | ⏳ Planned | JWT authentication, search history, logging, error handling |
+| Phase 6 | ⏳ Planned | Testing, Docker, Docker Compose, deployment |
+| Stretch | ⭐ Planned | Redis caching, Boolean/Phrase search, snippet generation, autocomplete |
 
+---
 
-Getting Started
+## Getting Started
 
-Prerequisites
+### Prerequisites
 
+- Python 3.12+
+- PostgreSQL
+- Git
 
-Python 3.12+
-PostgreSQL running locally (or via Docker)
+### Clone the repository
 
-
-Setup
-
-bashgit clone <repo-url>
+```bash
+git clone <repository-url>
 cd iris
+```
+
+### Create a virtual environment
+
+```bash
 python -m venv venv
-# Windows
+```
+
+**Windows**
+
+```powershell
 .\venv\Scripts\Activate.ps1
-# macOS/Linux
+```
+
+**macOS / Linux**
+
+```bash
 source venv/bin/activate
+```
 
+### Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-Create a .env file in the project root:
+### Configure environment variables
 
-DATABASE_URL=postgresql://<user>:<password>@localhost:5432/iris_db
-SECRET_KEY=<your-secret-key>
+Create a `.env` file in the project root.
+
+```env
+DATABASE_URL=postgresql://<username>:<password>@localhost:5432/iris_db
+SECRET_KEY=your-secret-key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
 
-Create the database:
+### Create the database
 
-sqlCREATE DATABASE iris_db;
+```sql
+CREATE DATABASE iris_db;
+```
 
-Run migrations:
+### Apply migrations
 
-bashalembic upgrade head
+```bash
+alembic upgrade head
+```
 
-Start the server:
+### Start the server
 
-bashuvicorn app.main:app --reload
+```bash
+uvicorn app.main:app --reload
+```
 
-API docs available at http://localhost:8000/docs.
+The API documentation will be available at:
 
-Running Tests
+```
+http://localhost:8000/docs
+```
 
-bashpytest
+---
 
-License
+## Running Tests
 
-This project is licensed under the MIT License — see LICENSE for details.
+```bash
+pytest
+```
+
+---
+
+## Learning Objectives
+
+This project is built to explore and demonstrate:
+
+- Backend API development
+- Database design and ORM usage
+- Information Retrieval systems
+- Inverted Index construction
+- BM25 relevance ranking
+- Authentication & Authorization
+- Software architecture and clean code
+- Docker-based deployment
+- Testing and maintainability
+
+---
+
+## License
+
+This project is licensed under the **MIT License**.
