@@ -51,7 +51,7 @@ iris/
 
 - [x] Phase 1 — Project setup, FastAPI, PostgreSQL, SQLAlchemy, Alembic, initial models
 - [x] Phase 2 — Document ingestion, CRUD APIs, Pydantic validation
-- [ ] Phase 3 — Tokenization, inverted index, posting lists, DB persistence
+- [x] Phase 3 — Tokenization, inverted index, posting lists, DB persistence
 - [ ] Phase 4 — Keyword search, BM25 ranking, top-k retrieval
 - [ ] Phase 5 — JWT auth, search history, logging, error handling
 - [ ] Phase 6 — Tests, Docker, Docker Compose, deployment
