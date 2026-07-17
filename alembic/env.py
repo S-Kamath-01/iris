@@ -13,6 +13,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.core.config import settings
 from app.db.base import Base
 from app.documents.model import Document  # noqa: F401 — import so Base knows about it
+from app.indexing.model import Term, PostingRecord  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
