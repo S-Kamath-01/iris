@@ -16,8 +16,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # --- Redis---
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # --- BM25 ranking ---
+    BM25_K1: float = 1.2
+    BM25_B: float = 0.75
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

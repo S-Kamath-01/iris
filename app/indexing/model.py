@@ -2,9 +2,10 @@
 
 from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
+from sqlalchemy import Float
 
 from app.db.base import Base
-
+SINGLETON_ID = 1
 
 class Term(Base):
     __tablename__ = "terms"
@@ -28,3 +29,10 @@ class PostingRecord(Base):
     __table_args__ = (
         UniqueConstraint("term_id", "document_id", name="uq_term_document"),
     )
+
+class IndexMetadata(Base):
+    __tablename__ = "index_metadata"
+
+    id = Column(Integer, primary_key=True, default=SINGLETON_ID)
+    total_documents = Column(Integer, nullable=False)
+    avg_doc_length = Column(Float, nullable=False)
