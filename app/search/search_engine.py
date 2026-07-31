@@ -8,7 +8,7 @@ from typing import Dict, List
 from app.core.config import settings
 from app.core.search_context import SearchContext
 from app.indexing.tokenizer import preprocess_text
-from app.search.bm25 import score_document
+from app.search.bm25 import score_document, explain_document_score, TermContribution
 
 
 @dataclass
@@ -46,3 +46,27 @@ def search(query: str, context: SearchContext, top_k: int = 10) -> List[RankedDo
     ]
 
     return heapq.nlargest(top_k, scored_candidates, key=lambda doc: doc.score)
+
+
+def explain(query: str, doc_id: int, context: SearchContext) -> List[TermContribution]:
+    query_terms = list(dict.fromkeys(preprocess_text(query)))
+
+    term_freqs: Dict[str, int] = {}
+    doc_freqs: Dict[str, int] = {}
+
+    for term in query_terms:
+        postings = context.inverted_index.get(term, [])
+        doc_freqs[term] = len(postings)
+        for posting in postings:
+            if posting.doc_id == doc_id:
+                term_freqs[term] = posting.term_freq
+
+    return explain_document_score(
+        term_freqs=term_freqs,
+        doc_freqs=doc_freqs,
+        doc_length=context.document_lengths[doc_id],
+        total_documents=context.total_documents,
+        avg_doc_length=context.avg_doc_length,
+        k1=settings.BM25_K1,
+        b=settings.BM25_B,
+    )

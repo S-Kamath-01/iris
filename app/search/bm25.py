@@ -77,8 +77,8 @@ def explain_document_score(
         TermContribution(
             term=term,
             contribution=_score_term(
-                term_freq=term_freqs[term],
-                doc_freq=doc_freqs[term],
+                f=term_freqs[term],
+                df=doc_freqs[term],
                 doc_length=doc_length,
                 total_documents=total_documents,
                 avg_doc_length=avg_doc_length,
