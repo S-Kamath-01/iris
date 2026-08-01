@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.db.base import Base
 from app.documents.model import Document  # noqa: F401 — import so Base knows about it
 from app.indexing.model import Term, PostingRecord, IndexMetadata  # noqa: F401
+from app.auth.model import User  # noqa: F401
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

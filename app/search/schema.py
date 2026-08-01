@@ -2,9 +2,6 @@
 
 from pydantic import BaseModel
 
-class SearchResponse(BaseModel):
-    query: str
-    results: list[SearchResult]
 
 class TermContributionResult(BaseModel):
     term: str
@@ -17,3 +14,8 @@ class SearchResult(BaseModel):
     doc_id: int
     score: float
     explanation: list[TermContributionResult] | None = None
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResult]

@@ -1,16 +1,17 @@
 # app/api/v1/search.py
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
 from app.search.search_engine import search as run_search
 from app.search.schema import SearchResult, SearchResponse
 from app.search.search_engine import search as run_search, explain as explain_search
 from app.search.schema import SearchResult, SearchResponse, TermContributionResult
 router = APIRouter(prefix="/search", tags=["search"])
-
+from app.auth.dependencies import get_current_user
+from app.auth.model import User
 
 @router.get("/", response_model=SearchResponse)
-def search(q: str, top_k: int, request: Request, explain: bool = False):
+def search(q: str, top_k: int, request: Request, explain: bool = False, current_user: User = Depends(get_current_user)):
     context = request.app.state.search_context
     ranked_documents = run_search(query=q, context=context, top_k=top_k)
 
