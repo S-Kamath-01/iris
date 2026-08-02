@@ -1,6 +1,8 @@
 # streamlit_app/app.py
 
 import os
+import html
+import re
 
 import requests
 import streamlit as st
@@ -13,61 +15,71 @@ st.set_page_config(page_title="IRIS Search", page_icon="🔍", layout="wide")
 st.markdown(
     """
     <style>
-    .iris-shell { padding-top: 0.5rem; }
-    .iris-hero {
-        padding: 1.25rem 1.5rem;
-        border: 1px solid rgba(49, 51, 63, 0.12);
-        border-radius: 1rem;
-        background: linear-gradient(135deg, rgba(19, 111, 99, 0.08), rgba(31, 119, 180, 0.05));
-        margin-bottom: 1rem;
-    }
-    .iris-kicker {
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        font-size: 0.74rem;
-        font-weight: 700;
-        color: rgba(49, 51, 63, 0.7);
-        margin-bottom: 0.35rem;
+    section.main > div.block-container {
+        padding-top: 1.2rem;
+        padding-bottom: 2rem;
+        max-width: 1180px;
     }
     .iris-title {
-        font-size: 1.8rem;
-        font-weight: 750;
+        font-size: 2rem;
         line-height: 1.1;
         margin: 0;
     }
     .iris-subtitle {
-        margin-top: 0.45rem;
-        color: rgba(49, 51, 63, 0.8);
-        font-size: 0.98rem;
+        color: inherit;
+        opacity: 0.78;
+        margin-top: 0.35rem;
     }
-    .iris-badge {
+    .iris-pill {
         display: inline-block;
-        padding: 0.25rem 0.6rem;
+        padding: 0.28rem 0.6rem;
         border-radius: 999px;
-        background: rgba(31, 119, 180, 0.12);
-        color: rgb(31, 119, 180);
-        font-size: 0.78rem;
+        background: color-mix(in srgb, currentColor 12%, transparent);
+        color: inherit;
+        font-size: 0.76rem;
         font-weight: 700;
-        margin-right: 0.35rem;
-        margin-bottom: 0.25rem;
+        margin-right: 0.4rem;
     }
-    .iris-muted {
-        color: rgba(49, 51, 63, 0.7);
-        font-size: 0.9rem;
+    .iris-score-value {
+        font-size: 1.18rem;
+        font-weight: 750;
+        line-height: 1.1;
+        text-align: right;
     }
-    .iris-preview {
-        white-space: pre-wrap;
+    .iris-score-label {
+        color: inherit;
+        opacity: 0.7;
+        font-size: 0.78rem;
+        margin-bottom: 0.15rem;
+        text-align: right;
+    }
+    .iris-snippet {
         line-height: 1.6;
-        margin: 0.35rem 0 0;
+        white-space: pre-wrap;
+        margin-top: 0.3rem;
     }
-    .iris-empty {
-        padding: 1.4rem 1.25rem;
-        border: 1px dashed rgba(49, 51, 63, 0.22);
+    .iris-snippet mark {
+        background: color-mix(in srgb, currentColor 14%, transparent);
+        color: inherit;
+        padding: 0 0.15rem;
+        border-radius: 0.2rem;
+    }
+    .iris-empty,
+    .iris-loading {
+        border: 1px dashed currentColor;
+        opacity: 0.85;
         border-radius: 1rem;
-        background: rgba(255, 255, 255, 0.65);
+        padding: 1.2rem 1rem;
+        background: transparent;
     }
-    .iris-empty h4 {
-        margin: 0 0 0.35rem 0;
+    .iris-login-kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: inherit;
+        opacity: 0.65;
+        margin-bottom: 0.35rem;
     }
     </style>
     """,
@@ -100,23 +112,33 @@ def _get_search_state() -> tuple[dict | None, str | None]:
 
 
 def _render_badge(text: str) -> str:
-    return f'<span class="iris-badge">{text}</span>'
+    return f'<span class="iris-pill">{html.escape(text)}</span>'
 
 
 def _render_error(message: str) -> None:
-    st.error(f"{message}")
+    st.error(message)
 
 
 def _render_empty_state() -> None:
     st.markdown(
         """
         <div class="iris-empty">
-            <h4>No search yet</h4>
-            <div class="iris-muted">Try a query like <b>space shuttle</b> or <b>graphics card</b> to see ranked results, categories, snippets, and explainable BM25 scores.</div>
+            <h4 style="margin: 0 0 0.35rem 0;">Search to see results</h4>
+            <div>Try a query like <b>space shuttle</b>, <b>graphics card</b>, or <b>medical imaging</b>.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def _highlight_snippet(snippet: str, query: str) -> str:
+    escaped = html.escape(snippet)
+    terms = [term for term in re.findall(r"[a-z0-9]+", query.lower()) if term]
+    if not terms:
+        return escaped
+
+    pattern = re.compile(r"(" + "|".join(re.escape(term) for term in terms) + r")", re.IGNORECASE)
+    return pattern.sub(lambda match: f"<mark>{match.group(0)}</mark>", escaped)
 
 
 def _render_explanation_table(explanation: list[dict[str, object]]) -> None:
@@ -132,6 +154,11 @@ def _render_explanation_table(explanation: list[dict[str, object]]) -> None:
         ],
         hide_index=True,
         use_container_width=True,
+        column_config={
+            "Contribution": st.column_config.NumberColumn(format="%.4f"),
+            "TF": st.column_config.NumberColumn(width="small"),
+            "DF": st.column_config.NumberColumn(width="small"),
+        },
     )
 
 
@@ -140,28 +167,34 @@ def _render_result_card(result: dict[str, object], index: int) -> None:
     preview = str(result.get("preview", ""))
     score = float(result.get("score", 0.0))
     doc_id = result.get("doc_id", "?")
+    query = str(st.session_state.get("last_query", ""))
 
     with st.container(border=True):
-        top_left, top_right = st.columns([3, 1])
+        top_left, top_right = st.columns([4, 1])
         with top_left:
-            st.markdown(f"**Result {index}**")
+            st.markdown(f"**Document {doc_id}**")
             st.markdown(_render_badge(category), unsafe_allow_html=True)
         with top_right:
-            st.markdown("**BM25 Score**")
-            st.markdown(f"{score:.4f}")
+            st.markdown('<div class="iris-score-label">BM25 Score</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="iris-score-value">{score:.4f}</div>', unsafe_allow_html=True)
 
-        doc_col, meta_col = st.columns([1, 4])
-        with doc_col:
-            st.markdown("**Document ID**")
-            st.markdown(f"{doc_id}")
-        with meta_col:
-            st.markdown("**Preview**")
-            st.markdown(f'<p class="iris-preview">{preview}</p>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="iris-snippet">{_highlight_snippet(preview, query)}</div>',
+            unsafe_allow_html=True,
+        )
 
         explanation = result.get("explanation")
         if explanation:
-            with st.expander("BM25 explanation"):
+            with st.expander("BM25 explanation", expanded=False):
                 _render_explanation_table(explanation)
+
+
+def _render_search_header() -> None:
+    st.markdown('<div class="iris-title">IRIS Search</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="iris-subtitle">Ranked retrieval over 20 Newsgroups with categories, snippets, and explainable BM25 scores.</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def login(email: str, password: str) -> tuple[str | None, str | None]:
@@ -215,90 +248,59 @@ def run_search(token: str, query: str, top_k: int, explain: bool):
 
 
 def show_login():
-    left, right = st.columns([1.3, 1])
+    st.markdown('<div class="iris-title">IRIS Search</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="iris-subtitle">Search the 20 Newsgroups corpus with BM25 ranking, snippets, and explainable scores.</div>',
+        unsafe_allow_html=True,
+    )
 
-    with left:
-        st.markdown(
-            """
-            <div class="iris-hero">
-                <div class="iris-kicker">IRIS search engine</div>
-                <div class="iris-title">Find documents across 20 Newsgroups with ranked search.</div>
-                <div class="iris-subtitle">FastAPI backend, PostgreSQL persistence, BM25 ranking, and explainable results in a clean demo UI.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    tab_login, tab_register = st.tabs(["Log in", "Create account"])
 
-        st.markdown(
-            """
-            <div class="iris-empty">
-                <h4>What you can demo</h4>
-                <div class="iris-muted">
-                    Login, run a search, inspect category badges, review query-aware snippets, and expand BM25 contributions.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    with tab_login:
+        with st.form("login_form"):
+            email = st.text_input("Email", placeholder="you@example.com")
+            password = st.text_input("Password", type="password", placeholder="Your password")
+            submitted = st.form_submit_button("Log in", use_container_width=True)
+            if submitted:
+                token, error = login(email, password)
+                if token:
+                    st.session_state.token = token
+                    st.session_state.email = email
+                    st.session_state.pop("last_results", None)
+                    st.session_state.pop("last_query", None)
+                    st.rerun()
+                else:
+                    _render_error(error)
 
-    with right:
-        tab_login, tab_register = st.tabs(["Log in", "Create account"])
-
-        with tab_login:
-            with st.form("login_form"):
-                email = st.text_input("Email", placeholder="you@example.com")
-                password = st.text_input("Password", type="password", placeholder="Your password")
-                submitted = st.form_submit_button("Log in", use_container_width=True)
-                if submitted:
-                    token, error = login(email, password)
-                    if token:
-                        st.session_state.token = token
-                        st.session_state.email = email
-                        st.session_state.pop("last_results", None)
-                        st.session_state.pop("last_query", None)
-                        st.rerun()
-                    else:
-                        _render_error(error)
-
-        with tab_register:
-            with st.form("register_form"):
-                new_email = st.text_input("Email", key="reg_email", placeholder="you@example.com")
-                new_password = st.text_input("Password", type="password", key="reg_password", placeholder="Choose a strong password")
-                reg_submitted = st.form_submit_button("Create account", use_container_width=True)
-                if reg_submitted:
-                    success, message = register(new_email, new_password)
-                    if success:
-                        st.success(message)
-                    else:
-                        _render_error(message)
+    with tab_register:
+        with st.form("register_form"):
+            new_email = st.text_input("Email", key="reg_email", placeholder="you@example.com")
+            new_password = st.text_input("Password", type="password", key="reg_password", placeholder="Choose a strong password")
+            reg_submitted = st.form_submit_button("Create account", use_container_width=True)
+            if reg_submitted:
+                success, message = register(new_email, new_password)
+                if success:
+                    st.success(message)
+                else:
+                    _render_error(message)
 
 
 def show_search():
     with st.sidebar:
-        st.markdown("### Signed in")
-        st.markdown(st.session_state.email)
-        st.caption("Search the indexed 20 Newsgroups corpus.")
-        if st.button("Log out", use_container_width=True):
+        st.markdown('### Account')
+        st.markdown(f'**{html.escape(st.session_state.email)}**')
+        if st.button('Log out', use_container_width=True):
             _sign_out()
             st.rerun()
 
-    st.markdown(
-        """
-        <div class="iris-hero iris-shell">
-            <div class="iris-kicker">Search</div>
-            <div class="iris-title">IRIS Search</div>
-            <div class="iris-subtitle">Ranked retrieval with category labels, query-aware snippets, and optional explanations.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    _render_search_header()
 
     with st.form("search_form", clear_on_submit=False):
-        query = st.text_input("Search query", placeholder="e.g. space shuttle")
-        control_left, control_right = st.columns([3, 1])
-        with control_left:
-            top_k = st.slider("Number of results", min_value=1, max_value=20, value=10)
-        with control_right:
+        search_col, topk_col = st.columns([5, 1])
+        with search_col:
+            query = st.text_input("Search query", placeholder="Try: space shuttle, telescope, graphics card")
+        with topk_col:
+            top_k = st.slider("Top k", min_value=1, max_value=20, value=10)
             explain = st.checkbox("Explain scores", value=False)
 
         search_clicked = st.form_submit_button("Search", type="primary", use_container_width=True)
@@ -307,9 +309,9 @@ def show_search():
     last_results, last_query = _get_search_state()
 
     if search_clicked and not clean_query:
-        st.warning("Type a query before searching.")
+        st.warning("Enter a search query to begin.")
     elif search_clicked and clean_query:
-        with st.spinner("Searching..."):
+        with st.spinner("Searching documents…"):
             results, error, unauthorized = run_search(
                 st.session_state.token, clean_query, top_k, explain
             )
@@ -323,7 +325,7 @@ def show_search():
         elif not results.get("results"):
             st.session_state.pop("last_results", None)
             st.session_state.pop("last_query", None)
-            st.info("No matches found. Try fewer words or a broader topic.")
+            st.info("No matches found. Try broader wording or fewer terms.")
         else:
             _set_search_state(results, clean_query)
             last_results, last_query = results, clean_query
@@ -332,17 +334,10 @@ def show_search():
         results = last_results
         active_query = last_query or results.get("query", "")
 
-        summary_left, summary_right = st.columns([3, 1])
-        with summary_left:
-            st.markdown(f"### Results for \"{active_query}\"")
-            st.caption(
-                f"Showing top {len(results['results'])} of {results['total_matches']} matching documents."
-            )
-        with summary_right:
-            st.markdown(
-                f"<div class='iris-empty'><div class='iris-muted'>Top k</div><div style='font-size: 1.4rem; font-weight: 750;'>{len(results['results'])}</div></div>",
-                unsafe_allow_html=True,
-            )
+        st.markdown(f"### Results for \"{active_query}\"")
+        st.caption(
+            f"Showing top {len(results['results'])} of {results['total_matches']} matching documents."
+        )
 
         for i, result in enumerate(results["results"], start=1):
             _render_result_card(result, i)
