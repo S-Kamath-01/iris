@@ -1,5 +1,6 @@
 # scripts/persist_index.py
 
+from sqlalchemy import Integer, column, update, values
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.session import SessionLocal
@@ -8,13 +9,33 @@ from app.indexing.model import IndexMetadata, SINGLETON_ID
 from app.indexing.persistence import save_index_to_db
 from scripts.build_index import build_index
 
+BATCH_SIZE = 5000
+
 
 def update_token_counts(db, index) -> None:
-    mappings = [
-        {"id": doc_id, "token_count": length}
-        for doc_id, length in index.document_lengths.items()
-    ]
-    db.bulk_update_mappings(Document, mappings)
+    rows = list(index.document_lengths.items())
+    if not rows:
+        return
+
+    for start in range(0, len(rows), BATCH_SIZE):
+        batch = rows[start : start + BATCH_SIZE]
+        token_counts = (
+            values(
+                column("id", Integer),
+                column("token_count", Integer),
+                name="token_counts",
+            )
+            .data(batch)
+            .alias("token_counts")
+        )
+
+        stmt = (
+            update(Document)
+            .where(Document.id == token_counts.c.id)
+            .values(token_count=token_counts.c.token_count)
+        )
+        db.execute(stmt)
+
     db.commit()
 
 

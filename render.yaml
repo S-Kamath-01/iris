@@ -1,7 +1,3 @@
-databases:
-  - name: iris-postgres
-    databaseName: iris_db
-
 services:
   - type: web
     name: iris-api
@@ -18,10 +14,7 @@ services:
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
-      - key: DATABASE_URL
-        fromDatabase:
-          name: iris-postgres
-          property: connectionString
+      # Set DATABASE_URL manually in the Render dashboard to your Neon PostgreSQL connection string.
 
   - type: web
     name: iris-frontend
