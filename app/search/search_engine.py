@@ -47,6 +47,14 @@ def search(query: str, context: SearchContext, top_k: int = 10) -> List[RankedDo
 
     return heapq.nlargest(top_k, scored_candidates, key=lambda doc: doc.score)
 
+def count_matching_documents(query: str, context: SearchContext) -> int:
+    """Size of the union candidate set — same union logic as search(), without scoring/top-k."""
+    query_terms = list(dict.fromkeys(preprocess_text(query)))
+    matching_doc_ids = set()
+    for term in query_terms:
+        for posting in context.inverted_index.get(term, []):
+            matching_doc_ids.add(posting.doc_id)
+    return len(matching_doc_ids)
 
 def explain(query: str, doc_id: int, context: SearchContext) -> List[TermContribution]:
     query_terms = list(dict.fromkeys(preprocess_text(query)))

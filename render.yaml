@@ -1,0 +1,32 @@
+databases:
+  - name: iris-postgres
+    databaseName: iris_db
+
+services:
+  - type: web
+    name: iris-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: DATABASE_URL
+        fromDatabase:
+          name: iris-postgres
+          property: connectionString
+
+  - type: web
+    name: iris-frontend
+    env: python
+    rootDir: streamlit_app
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.address 0.0.0.0 --server.port $PORT
+    autoDeploy: false

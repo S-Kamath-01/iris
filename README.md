@@ -1,95 +1,77 @@
-# IRIS — Information Retrieval & Indexing System
+# IRIS
 
-> 🚧 **Project Status: In Progress** — actively being built. This README reflects the current
-> state and is updated as development progresses. See [Roadmap](#roadmap) for what's done vs
-> planned.
+IRIS is a production-style information retrieval project built around the 20 Newsgroups corpus. It combines a FastAPI backend, PostgreSQL persistence, an in-memory inverted index rebuilt at startup, BM25 ranking, JWT auth, and a lightweight Streamlit frontend for ranked search and explanations.
 
-A backend information retrieval system that indexes a document corpus and exposes REST APIs
-for keyword search and relevance-ranked retrieval, built over the 20 Newsgroups dataset
-(~18,000 documents).
+## What It Does
 
-## Features
+- Ingests and stores the 20 Newsgroups dataset
+- Builds and persists an inverted index with posting lists and index metadata
+- Reconstructs the search context from PostgreSQL on startup
+- Serves authenticated BM25 search with category, snippet, and optional term-level explanation
+- Exposes a Streamlit UI for login, search, and result exploration
 
-- Document ingestion and CRUD APIs
-- Custom in-memory inverted index (HashMap → posting lists), persisted to PostgreSQL
-- Text preprocessing: tokenization, stopword removal, stemming
-- BM25-based relevance ranking with top-k retrieval
-- JWT authentication, protected endpoints, and per-user search history
-- Dockerized deployment with Postgres and (optionally) Redis caching
+## Architecture
+
+```mermaid
+flowchart LR
+		U[User] --> S[Streamlit UI]
+		S --> A[FastAPI API]
+		A --> D[(PostgreSQL)]
+		A --> C[SearchContext\nBM25 + Inverted Index]
+		C --> A
+		A --> S
+```
+
+The important constraint is that search is not recomputed from raw documents on every request. The index is persisted once, then rebuilt into memory from the database at startup.
 
 ## Tech Stack
 
-- **API:** FastAPI
-- **Database:** PostgreSQL, SQLAlchemy ORM, Alembic migrations
-- **Auth:** JWT
-- **Caching (optional):** Redis
-- **NLP:** NLTK
-- **Testing:** pytest
-- **Containerization:** Docker, Docker Compose
+- FastAPI
+- SQLAlchemy 2.x
+- Alembic
+- PostgreSQL
+- PyJWT
+- NLTK
+- pytest
+- Streamlit
+- Docker and Docker Compose
 
-## Project Structure
+## Screenshots
 
-```
-iris/
-├── app/
-│   ├── main.py                 # FastAPI app entrypoint
-│   ├── api/v1/                 # versioned route handlers
-│   ├── core/                   # config, constants
-│   ├── db/                     # DB engine/session setup
-│   ├── documents/              # document model, schema, repository, service
-│   ├── indexing/               # tokenizer, inverted index, posting lists
-│   ├── search/                 # BM25 ranking, search engine
-│   ├── auth/                   # JWT auth
-│   └── utils/
-├── tests/
-├── alembic/                    # DB migrations
-├── docker-compose.yml
-└── requirements.txt
-```
+Add two images to the repo when you have a chance:
 
-## Roadmap
+- Login view
+- Search results view
 
-- [x] Phase 1 — Project setup, FastAPI, PostgreSQL, SQLAlchemy, Alembic, initial models
-- [x] Phase 2 — Document ingestion, CRUD APIs, Pydantic validation
-- [x] Phase 3 — Tokenization, inverted index, posting lists, DB persistence
-- [x] Phase 4 — Keyword search, BM25 ranking, top-k retrieval
-- [ ] Phase 5 — JWT auth, search history, logging, error handling
-- [ ] Phase 6 — Tests, Docker, Docker Compose, deployment`
-- [ ] Stretch — Redis caching, boolean/phrase search, snippet generation, autocomplete
+Recommended paths:
 
-## Getting Started
+- `docs/screenshots/login.png`
+- `docs/screenshots/search.png`
+
+## Local Setup
 
 ### Prerequisites
-- Python 3.12+
-- PostgreSQL running locally (or via Docker)
 
-### Setup
+- Python 3.12+
+- PostgreSQL 16+
+
+### Backend
 
 ```bash
 git clone <repo-url>
 cd iris
 python -m venv venv
-# Windows
-.\venv\Scripts\Activate.ps1
-# macOS/Linux
 source venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in the project root:
+Create a `.env` file:
 
-```
-DATABASE_URL=postgresql://<user>:<password>@localhost:5432/iris_db
-SECRET_KEY=<your-secret-key>
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/iris_db
+SECRET_KEY=replace-me-with-a-long-random-string
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-```
-
-Create the database:
-
-```sql
-CREATE DATABASE iris_db;
 ```
 
 Run migrations:
@@ -98,20 +80,76 @@ Run migrations:
 alembic upgrade head
 ```
 
-Start the server:
+Start the API:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-API docs available at `http://localhost:8000/docs`.
+### Streamlit Frontend
 
-## Running Tests
+In a second terminal:
+
+```bash
+cd streamlit_app
+pip install -r requirements.txt
+API_BASE_URL=http://localhost:8000 streamlit run app.py
+```
+
+## Docker
+
+Start the full stack locally:
+
+```bash
+docker compose up --build
+```
+
+The API will be available on port `8000` and PostgreSQL on port `5432`.
+
+## Deployment
+
+The simplest Render setup is two web services plus one managed Postgres database:
+
+1. Backend service from the root `Dockerfile`
+2. Streamlit service from `streamlit_app/app.py`
+3. Render Postgres, wired into `DATABASE_URL`
+
+Suggested environment variables:
+
+- Backend: `DATABASE_URL`, `SECRET_KEY`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `APP_ENV=production`
+- Frontend: `API_BASE_URL` pointing to the deployed backend URL
+
+If you use the included `render.yaml`, Render can provision the services with the same split architecture.
+
+## API Examples
+
+Authenticate:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+	-H "Content-Type: application/x-www-form-urlencoded" \
+	-d "username=user@example.com&password=secret"
+```
+
+Search:
+
+```bash
+curl "http://localhost:8000/api/v1/search/?q=space+shuttle&top_k=5&explain=true" \
+	-H "Authorization: Bearer <token>"
+```
+
+## Testing
 
 ```bash
 pytest
 ```
 
+## Notes
+
+- Users, documents, and index metadata are persisted in PostgreSQL.
+- Startup is idempotent as long as migrations and the index persistence script are run once per dataset refresh.
+- Search results now include category, preview snippet, document id, score, and optional explanation data.
+
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE).

@@ -13,9 +13,12 @@ class TermContributionResult(BaseModel):
 class SearchResult(BaseModel):
     doc_id: int
     score: float
+    category: str
+    preview: str
     explanation: list[TermContributionResult] | None = None
 
 
 class SearchResponse(BaseModel):
     query: str
+    total_matches: int
     results: list[SearchResult]
