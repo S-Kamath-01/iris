@@ -102,7 +102,8 @@ uvicorn app.main:app --reload
 ```bash
 cd streamlit_app
 pip install -r requirements.txt
-API_BASE_URL=http://localhost:8000 streamlit run app.py
+API_BASE_URL=http://localhost:8000
+streamlit run app.py
 ```
 
 ## Docker Setup
