@@ -7,7 +7,7 @@ import re
 import requests
 import streamlit as st
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000").rstrip("/")
 REQUEST_TIMEOUT = 10
 
 st.set_page_config(page_title="IRIS Search", page_icon="🔍", layout="wide")
